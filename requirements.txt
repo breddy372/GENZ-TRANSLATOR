@@ -1,0 +1,16 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch
+torchvision
+torchaudio
+accelerate>=0.28.0
+peft>=0.10.0
+bitsandbytes>=0.42.0
+transformers>=4.40.0
+trl>=0.8.0
+scipy>=1.11.0
+tiktoken
+ipywidgets
+python-dotenv
+tensorboard
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0

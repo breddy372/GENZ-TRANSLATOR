@@ -1,0 +1,37 @@
+# Environments
+.env
+venv/
+env/
+.venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project-specific / Data
+data/
+results/
+tests/results/
+tests/llama3_genz_final/
+tests/lora_adapter_temp/
+fix_trl_encoding.py
+fix_torch.bat
+scratch/
+test_*.py
