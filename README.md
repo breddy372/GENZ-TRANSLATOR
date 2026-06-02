@@ -3,6 +3,40 @@
 A Gen-Z slang translator powered by a LoRA fine-tuned LLaMA 3.2 1B model, served as a FastAPI endpoint. 
 **The server automatically downloads and caches the model from Hugging Face Hub (`Bhargavreddy1/Llama-3.2-1B-GenZ-Translator-v1`) on startup.**
 
+## Prerequisites
+
+- **GPU Required**: An NVIDIA GPU with CUDA support and at least **6GB of VRAM** (e.g., GTX 1660 Ti or better). The model loads in full float16 for maximum stability and speed.
+- **Python**: Python 3.10 or higher.
+- **Hugging Face Account**: You need a Hugging Face account with a Read/Write Access Token.
+
+## Installation & Setup
+
+### 1. Create and Activate a Virtual Environment
+```bash
+# Windows
+python -m venv venv
+.\venv\Scripts\activate
+
+# Linux/macOS
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Setup Hugging Face Token
+1. Go to [Hugging Face Settings -> Access Tokens](https://huggingface.co/settings/tokens).
+2. Create a new token with **Read/Write** permissions.
+3. In the root directory of this project, create a `.env` file and add your token:
+
+```env
+HF_TOKEN=your_hf_read_write_token_here
+MODEL_WRITER_TOKEN=your_hf_read_write_token_here
+```
+
 ## Quick Start
 
 ### 1. Start the API server
