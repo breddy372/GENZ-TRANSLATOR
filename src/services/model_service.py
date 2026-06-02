@@ -14,7 +14,7 @@ import time
 import logging
 import torch
 from pathlib import Path
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 logger = logging.getLogger(__name__)
 
