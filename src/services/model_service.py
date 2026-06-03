@@ -14,7 +14,7 @@ import time
 import logging
 import torch
 from pathlib import Path
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, PreTrainedTokenizerFast, pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +66,10 @@ class ModelService:
         ).to("cuda")
         self.model.config.use_cache = True  # KV cache for faster generation
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_path, trust_remote_code=True
-        )
+        # AutoTokenizer reads tokenizer_class from the Hub config first, which throws
+        # ValueError for this model's non-standard "TokenizersBackend" class name.
+        # PreTrainedTokenizerFast loads directly from tokenizer.json, skipping that check.
+        self.tokenizer = PreTrainedTokenizerFast.from_pretrained(self.model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.pipe = pipeline(

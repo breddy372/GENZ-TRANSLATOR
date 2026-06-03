@@ -1,6 +1,6 @@
 # Gen-Z Translator — Fine-tuned LLaMA 3.2 1B
 
-A Gen-Z slang translator powered by a LoRA fine-tuned LLaMA 3.2 1B model, served as a FastAPI endpoint. 
+A Gen-Z slang translator powered by a LoRA fine-tuned LLaMA 3.2 1B model, served as a FastAPI endpoint.
 **The server automatically downloads and caches the model from Hugging Face Hub (`Bhargavreddy1/Llama-3.2-1B-GenZ-Translator-v1`) on startup.**
 
 ## Prerequisites
@@ -101,6 +101,7 @@ cd tests
 LORA/
 ├── app.py                          # FastAPI server
 ├── requirements.txt                # Python dependencies
+├── dockerfile                      # Docker build config
 ├── .env                            # HF_TOKEN
 ├── src/
 │   ├── models/
@@ -114,4 +115,54 @@ LORA/
 │   └── LORAfinetuningLLAMA3.ipynb  # Training & Hugging Face upload notebook
 └── data/
     └── file.7z                     # Training data
+```
+
+## Docker
+
+> **Requirements:** Docker Desktop with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed for GPU support.
+
+### 1. Build the image
+```bash
+docker build -t genz-translator .
+```
+
+### 2. Run the container
+
+**With GPU (recommended):**
+```bash
+docker run --gpus all -p 8000:8000 --name genz-api genz-translator
+```
+
+**CPU only (slower inference):**
+```bash
+docker run -p 8000:8000 --name genz-api genz-translator
+```
+
+Wait for the log line `✅ Model ready!` before sending requests (~30–60s on first run).
+
+### 3. Test the container
+
+**Health check:**
+```bash
+curl http://localhost:8000/health
+```
+
+**Translate:**
+```bash
+curl -X POST http://localhost:8000/translate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I am really tired today."}'
+```
+
+**Interactive Swagger UI:** http://localhost:8000/docs
+
+### 4. View logs
+```bash
+docker logs genz-api -f
+```
+
+### 5. Stop and remove
+```bash
+docker stop genz-api
+docker rm genz-api
 ```

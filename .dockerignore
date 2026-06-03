@@ -1,0 +1,12 @@
+.env
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+tests/llama3_genz_final/
+tests/results/
+tests/lora_adapter_temp/
+scratch/
+data/
