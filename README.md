@@ -119,28 +119,137 @@ LORA/
 
 ## Docker
 
-> **Requirements:** Docker Desktop with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed for GPU support.
+Two Dockerfiles are provided:
+
+| File | Use case |
+|------|----------|
+| `dockerfile` | **GPU mode** — CUDA 12.1 image, requires NVIDIA GPU passthrough |
+| `dockerfile.cpu` | **CPU-only mode** — slim Python image, works anywhere, slower inference |
+
+---
+
+### Prerequisites
+
+#### GPU mode (recommended)
+- **Docker Desktop** with **WSL 2 backend** enabled  
+  _(Settings → General → "Use the WSL 2 based engine" ✅)_
+- **NVIDIA GPU** with ≥ 6 GB VRAM (e.g. GTX 1660 Ti or better)
+- **NVIDIA drivers v525+** installed on the Windows host  
+  Verify: `nvidia-smi` should show your GPU
+- Confirm GPU passthrough into Docker works:
+  ```bash
+  docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+  ```
+  You should see your GPU listed inside the container output.
+
+#### CPU mode
+- Docker Desktop only — no GPU or special drivers needed.
+
+---
 
 ### 1. Build the image
+
+**GPU build (default):**
 ```bash
 docker build -t genz-translator .
 ```
 
-### 2. Run the container
-
-**With GPU (recommended):**
+**CPU-only build:**
 ```bash
-docker run --gpus all -p 8000:8000 --name genz-api genz-translator
+docker build -f dockerfile.cpu -t genz-translator-cpu .
 ```
 
-**CPU only (slower inference):**
+---
+
+### 2. Pass your Hugging Face token
+
+The model is downloaded from Hugging Face Hub on first startup. Pass your token as an environment variable:
+
 ```bash
-docker run -p 8000:8000 --name genz-api genz-translator
+# GPU
+docker run --gpus all -p 8000:8000 \
+  -e HF_TOKEN=your_hf_token_here \
+  --name genz-api genz-translator
+
+# CPU
+docker run -p 8000:8000 \
+  -e HF_TOKEN=your_hf_token_here \
+  --name genz-api-cpu genz-translator-cpu
 ```
 
-Wait for the log line `✅ Model ready!` before sending requests (~30–60s on first run).
+Or load it from your `.env` file automatically:
 
-### 3. Test the container
+```bash
+# GPU
+docker run --gpus all -p 8000:8000 \
+  --env-file .env \
+  --name genz-api genz-translator
+```
+
+---
+
+### 3. Cache the model between runs (recommended)
+
+On first startup the model (~2.4 GB) is downloaded from Hugging Face.  
+Mount a local volume so it isn't re-downloaded on every `docker run`:
+
+```bash
+# GPU — cache model to a local folder
+docker run --gpus all -p 8000:8000 \
+  --env-file .env \
+  -v "%cd%\hf_cache:/root/.cache/huggingface" \
+  --name genz-api genz-translator
+
+# PowerShell variant (use ${PWD} instead of %cd%)
+docker run --gpus all -p 8000:8000 \
+  --env-file .env \
+  -v "${PWD}/hf_cache:/root/.cache/huggingface" \
+  --name genz-api genz-translator
+```
+
+---
+
+### 4. Docker Compose (easiest way to run)
+
+Create a `docker-compose.yml` in the project root:
+
+```yaml
+services:
+  app:
+    build: .                          # use dockerfile.cpu for CPU mode
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+```
+
+Then:
+
+```bash
+# Start (builds automatically if image doesn't exist)
+docker compose up
+
+# Start in background (detached)
+docker compose up -d
+
+# Stop
+docker compose down
+```
+
+---
+
+### 5. Verify the container is running
+
+Wait for `✅ Model ready!` in the logs (~30–60s on first run), then:
 
 **Health check:**
 ```bash
@@ -151,18 +260,78 @@ curl http://localhost:8000/health
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H "Content-Type: application/json" \
-  -d '{"text": "I am really tired today."}'
+  -d '{"text": "I am really tired today, I need some rest."}'
 ```
 
 **Interactive Swagger UI:** http://localhost:8000/docs
 
-### 4. View logs
+---
+
+### 6. Useful container commands
+
 ```bash
+# Stream live logs
 docker logs genz-api -f
+
+# Check container status
+docker ps -a
+
+# Open a shell inside the running container
+docker exec -it genz-api bash
+
+# Confirm GPU is visible inside the container
+docker exec -it genz-api nvidia-smi
+
+# Stop the container
+docker stop genz-api
+
+# Remove the container (keeps the image)
+docker rm genz-api
+
+# Stop AND remove in one step
+docker rm -f genz-api
 ```
 
-### 5. Stop and remove
+---
+
+### 7. Rebuild after code changes
+
 ```bash
-docker stop genz-api
-docker rm genz-api
+# Rebuild image (no cache, picks up all file changes)
+docker build --no-cache -t genz-translator .
+
+# Then re-run
+docker run --gpus all -p 8000:8000 --env-file .env --name genz-api genz-translator
 ```
+
+---
+
+### 8. Image & disk management
+
+```bash
+# List all images
+docker images
+
+# Remove the built image
+docker rmi genz-translator
+
+# Remove ALL stopped containers and dangling images (reclaim disk space)
+docker system prune
+
+# Nuclear option — remove everything including volumes and cached layers
+docker system prune -a --volumes
+```
+
+---
+
+### 9. Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Found no NVIDIA driver` | Container started without `--gpus all` | Add `--gpus all` flag to `docker run` |
+| `nvidia-smi` fails in container | GPU passthrough not configured | Enable WSL 2 backend in Docker Desktop; verify `nvidia-smi` works in WSL |
+| `docker: Error response: unknown flag: --gpus` | Old Docker version | Update Docker Desktop to v20.10+ |
+| Model not downloading | Missing or invalid HF token | Pass `--env-file .env` or `-e HF_TOKEN=...` |
+| Port already in use | Another process on port 8000 | Change to `-p 8001:8000` and access via port 8001 |
+| Container exits immediately | Startup error (model load failed) | Run `docker logs genz-api` to see the error |
+

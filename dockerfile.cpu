@@ -1,0 +1,22 @@
+# ─── CPU-only Dockerfile ────────────────────────────────────────────────────
+# Use this when Docker Desktop does NOT have GPU passthrough configured.
+# The app will automatically fall back to CPU inference via model_service.py.
+# Inference will be slower (~10-30s per request) but will work without a GPU.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install PyTorch CPU build first (avoids downloading the 2GB CUDA wheel)
+RUN pip install --no-cache-dir torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+
+# Copy requirements.txt (torch is already installed above — comment keeps it clear)
+COPY requirements.txt .
+
+# Install remaining dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application source
+COPY . .
+
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

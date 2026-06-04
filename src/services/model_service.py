@@ -40,6 +40,7 @@ class ModelService:
         self.model = None
         self.model_path = MODEL_ID
         self._loaded = False
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     @property
     def is_loaded(self) -> bool:
@@ -55,15 +56,16 @@ class ModelService:
             return
 
         logger.info(f"Loading model '{self.model_path}' from Hugging Face Hub...")
+        logger.info(f"Using device: {self.device.upper()}")
         start = time.time()
 
-        # Load in full float16 (no quantization). Since LLaMA 3.2 1B is tiny (~2.4 GB in fp16),
-        # it fits beautifully on your GTX 1660 Ti (6 GB) with ~3 GB to spare.
-        # We load on CPU and move to CUDA to prevent `accelerate` device_map DLL crashes on Windows.
+        # Use float16 on CUDA (fast + memory efficient), float32 on CPU (float16 unsupported on most CPUs).
+        # Load on CPU first, then move to target device to avoid accelerate DLL issues on Windows.
+        dtype = torch.float16 if self.device == "cuda" else torch.float32
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            torch_dtype=torch.float16,
-        ).to("cuda")
+            torch_dtype=dtype,
+        ).to(self.device)
         self.model.config.use_cache = True  # KV cache for faster generation
 
         # AutoTokenizer reads tokenizer_class from the Hub config first, which throws
@@ -148,8 +150,9 @@ class ModelService:
             self.model = None
             self.tokenizer = None
             self._loaded = False
-            torch.cuda.empty_cache()
-            logger.info("Model unloaded from GPU memory.")
+            if self.device == "cuda":
+                torch.cuda.empty_cache()
+            logger.info(f"Model unloaded from {self.device.upper()} memory.")
 
     def get_gpu_info(self) -> dict:
         """Return GPU name and VRAM usage, if available."""
