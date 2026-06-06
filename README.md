@@ -210,7 +210,13 @@ docker run --gpus all -p 8000:8000 \
 ---
 
 ### 4. Docker Compose (easiest way to run)
-
+Security
+SOC 2 compliance
+HIPAA compatibility
+Audit logs
+Static IP proxy
+RBAC
+SSO
 Create a `docker-compose.yml` in the project root:
 
 ```yaml
