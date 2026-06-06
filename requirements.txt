@@ -7,3 +7,7 @@ sentencepiece
 python-dotenv
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
+
+# Modal deployment
+modal>=0.73.0
+huggingface_hub>=0.23.0
